@@ -6,6 +6,7 @@ import { whatsappRouter } from "./whatsapp";
 import { aiConfigRouter } from "./ai-config";
 import { conversationRouter } from "./conversation";
 import { leadRouter } from "./lead";
+import { processRouter } from "./process";
 
 export const appRouter = router({
   user: userRouter,
@@ -15,6 +16,7 @@ export const appRouter = router({
   aiConfig: aiConfigRouter,
   conversation: conversationRouter,
   lead: leadRouter,
+  process: processRouter,
 });
 
 export type AppRouter = typeof appRouter;
