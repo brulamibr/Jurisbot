@@ -7,6 +7,7 @@ import { aiConfigRouter } from "./ai-config";
 import { conversationRouter } from "./conversation";
 import { leadRouter } from "./lead";
 import { processRouter } from "./process";
+import { knowledgeRouter } from "./knowledge";
 
 export const appRouter = router({
   user: userRouter,
@@ -17,6 +18,7 @@ export const appRouter = router({
   conversation: conversationRouter,
   lead: leadRouter,
   process: processRouter,
+  knowledge: knowledgeRouter,
 });
 
 export type AppRouter = typeof appRouter;
