@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Scale } from "lucide-react";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { SidebarNav } from "./sidebar-nav";
 import { Header } from "./header";
 
@@ -22,26 +23,26 @@ export function AppShell({
 }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  const sidebarHeader = (
+    <div className="flex h-14 items-center gap-2 border-b px-4">
+      <Scale className="h-5 w-5 text-primary" />
+      <span className="text-lg font-semibold">JurisBot</span>
+    </div>
+  );
+
   return (
     <div className="flex h-screen overflow-hidden">
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      {/* Mobile sidebar */}
+      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+        <SheetContent side="left" className="w-64 p-0">
+          {sidebarHeader}
+          <SidebarNav onNavigate={() => setSidebarOpen(false)} />
+        </SheetContent>
+      </Sheet>
 
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 transform border-r bg-sidebar transition-transform duration-200 lg:static lg:translate-x-0 ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <div className="flex h-14 items-center gap-2 border-b px-4">
-          <Scale className="h-5 w-5 text-sidebar-primary" />
-          <span className="text-lg font-semibold text-sidebar-foreground">
-            JurisBot
-          </span>
-        </div>
+      {/* Desktop sidebar */}
+      <aside className="hidden w-64 shrink-0 border-r bg-sidebar lg:block">
+        {sidebarHeader}
         <SidebarNav />
       </aside>
 
@@ -51,9 +52,9 @@ export function AppShell({
           userEmail={userEmail}
           userRole={userRole}
           officeName={officeName}
-          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+          onToggleSidebar={() => setSidebarOpen(true)}
         />
-        <main className="flex-1 overflow-y-auto bg-background p-6">
+        <main className="flex-1 overflow-y-auto bg-background p-4 md:p-6">
           {children}
         </main>
       </div>

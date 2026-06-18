@@ -1,41 +1,16 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { MessageSquare, Users, Briefcase, Flame } from "lucide-react";
+"use client";
 
-const stats = [
-  {
-    title: "Conversas Ativas",
-    value: "—",
-    description: "Atendimentos em andamento",
-    icon: MessageSquare,
-  },
-  {
-    title: "Leads Hoje",
-    value: "—",
-    description: "Novos contatos captados",
-    icon: Users,
-  },
-  {
-    title: "Leads Quentes",
-    value: "—",
-    description: "Prontos para conversão",
-    icon: Flame,
-    className: "text-warning",
-  },
-  {
-    title: "Processos Ativos",
-    value: "—",
-    description: "Em acompanhamento",
-    icon: Briefcase,
-  },
-];
+import { trpc } from "@/lib/trpc/client";
+import { StatCards } from "@/components/dashboard/stat-cards";
+import { RecentConversations } from "@/components/dashboard/recent-conversations";
+import { LeadsByArea } from "@/components/dashboard/leads-by-area";
+import { LeadFunnel } from "@/components/dashboard/lead-funnel";
+import { WhatsappStatus } from "@/components/dashboard/whatsapp-status";
 
 export default function DashboardPage() {
+  const stats = trpc.dashboard.stats.useQuery();
+  const whatsapp = trpc.dashboard.whatsappStatus.useQuery();
+
   return (
     <div className="space-y-6">
       <div>
@@ -45,53 +20,37 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
-          <Card key={stat.title}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">
-                {stat.title}
-              </CardTitle>
-              <stat.icon
-                className={`h-4 w-4 text-muted-foreground ${stat.className ?? ""}`}
-              />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
-              <CardDescription className="text-xs">
-                {stat.description}
-              </CardDescription>
-            </CardContent>
-          </Card>
-        ))}
+      <StatCards
+        activeConversations={stats.data?.activeConversations ?? 0}
+        leadsToday={stats.data?.leadsToday ?? 0}
+        hotLeads={stats.data?.hotLeads ?? 0}
+        activeProcesses={stats.data?.activeProcesses ?? 0}
+        isLoading={stats.isLoading}
+      />
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <RecentConversations
+            conversations={stats.data?.recentConversations ?? []}
+            isLoading={stats.isLoading}
+          />
+        </div>
+        <WhatsappStatus
+          instances={whatsapp.data ?? []}
+          isLoading={whatsapp.isLoading}
+        />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Conversas Recentes</CardTitle>
-            <CardDescription>
-              Últimas interações via WhatsApp
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Conecte o WhatsApp para ver as conversas aqui.
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Leads por Área</CardTitle>
-            <CardDescription>Distribuição por área jurídica</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Os dados aparecerão conforme leads forem captados.
-            </p>
-          </CardContent>
-        </Card>
+        <LeadFunnel
+          data={stats.data?.leadsByScore ?? []}
+          totalLeads={stats.data?.totalLeads ?? 0}
+          isLoading={stats.isLoading}
+        />
+        <LeadsByArea
+          data={stats.data?.leadsByArea ?? []}
+          isLoading={stats.isLoading}
+        />
       </div>
     </div>
   );
