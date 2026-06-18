@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
     "@hapi/boom",
     "qrcode",
     "pino",
+    "openai",
+    "@google/generative-ai",
+    "@anthropic-ai/sdk",
   ],
 };
 
