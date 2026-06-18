@@ -10,6 +10,7 @@ import {
   BookOpen,
   Settings,
   UserCircle,
+  Smartphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +20,7 @@ const navItems = [
   { href: "/leads", label: "Leads", icon: Users },
   { href: "/processes", label: "Processos", icon: Briefcase },
   { href: "/knowledge", label: "Base de Conhecimento", icon: BookOpen },
+  { href: "/whatsapp", label: "WhatsApp", icon: Smartphone },
   { href: "/users", label: "Usuários", icon: UserCircle },
   { href: "/settings", label: "Configurações", icon: Settings },
 ];
