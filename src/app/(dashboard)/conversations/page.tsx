@@ -1,35 +1,71 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { MessageSquare } from "lucide-react";
+"use client";
+
+import { useState } from "react";
+import { trpc } from "@/lib/trpc/client";
+import { ConversationList } from "@/components/conversations/conversation-list";
+import { ChatView } from "@/components/conversations/chat-view";
+import { ContactPanel } from "@/components/conversations/contact-panel";
 
 export default function ConversationsPage() {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showContactPanel, setShowContactPanel] = useState(true);
+
+  const conversationsQuery = trpc.conversation.list.useQuery();
+  const selectedConversation = trpc.conversation.getById.useQuery(
+    { id: selectedId! },
+    { enabled: !!selectedId }
+  );
+  const messagesQuery = trpc.conversation.messages.useQuery(
+    { conversationId: selectedId!, limit: 50 },
+    { enabled: !!selectedId, refetchInterval: 3000 }
+  );
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Conversas</h1>
-        <p className="text-sm text-muted-foreground">
-          Gerencie todos os atendimentos via WhatsApp
-        </p>
+    <div className="-m-4 flex h-[calc(100vh-3.5rem)] md:-m-6">
+      {/* Column 1: Conversation List */}
+      <div
+        className={`w-full shrink-0 border-r md:w-80 ${
+          selectedId ? "hidden md:block" : ""
+        }`}
+      >
+        <ConversationList
+          conversations={conversationsQuery.data ?? []}
+          isLoading={conversationsQuery.isLoading}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+        />
       </div>
 
-      <Card>
-        <CardContent className="flex flex-col items-center justify-center py-16">
-          <div className="rounded-full bg-muted p-4">
-            <MessageSquare className="h-8 w-8 text-muted-foreground" />
-          </div>
-          <CardTitle className="mt-4 text-lg">Inbox de Conversas</CardTitle>
-          <CardDescription className="mt-2 max-w-sm text-center">
-            Layout em 3 colunas estilo Chatwoot: lista de conversas, chat
-            central e painel de dados do contato. Conecte o WhatsApp para
-            começar.
-          </CardDescription>
-        </CardContent>
-      </Card>
+      {/* Column 2: Chat */}
+      {selectedId ? (
+        <div className="flex flex-1 flex-col">
+          <ChatView
+            conversation={selectedConversation.data ?? null}
+            messages={messagesQuery.data?.messages ?? []}
+            isLoading={messagesQuery.isLoading}
+            onBack={() => setSelectedId(null)}
+            onToggleContactPanel={() => setShowContactPanel(!showContactPanel)}
+            onRefresh={() => {
+              conversationsQuery.refetch();
+              messagesQuery.refetch();
+              selectedConversation.refetch();
+            }}
+          />
+        </div>
+      ) : (
+        <div className="hidden flex-1 items-center justify-center md:flex">
+          <p className="text-sm text-muted-foreground">
+            Selecione uma conversa para visualizar
+          </p>
+        </div>
+      )}
+
+      {/* Column 3: Contact Info Panel */}
+      {selectedId && showContactPanel && selectedConversation.data && (
+        <div className="hidden w-72 shrink-0 border-l lg:block">
+          <ContactPanel conversation={selectedConversation.data} />
+        </div>
+      )}
     </div>
   );
 }
