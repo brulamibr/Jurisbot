@@ -1,0 +1,339 @@
+generator client {
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [vector]
+}
+
+// ─── MULTI-TENANT ROOT ───────────────────────────────────────────────
+
+model Office {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  phone     String?
+  email     String?
+  logo      String?
+  settings  Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users              User[]
+  whatsappInstances  WhatsappInstance[]
+  contacts           Contact[]
+  conversations      Conversation[]
+  leads              Lead[]
+  processes          Process[]
+  knowledgeDocuments KnowledgeDocument[]
+  aiConfigs          AiConfig[]
+
+  @@map("offices")
+}
+
+// ─── USERS & AUTH ────────────────────────────────────────────────────
+
+model User {
+  id         String   @id @default(cuid())
+  supabaseId String   @unique @map("supabase_id")
+  officeId   String   @map("office_id")
+  email      String   @unique
+  name       String
+  avatar     String?
+  role       UserRole @default(ATTENDANT)
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  office                Office         @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  sentMessages          Message[]      @relation("SentByUser")
+  assignedConversations Conversation[] @relation("AssignedTo")
+
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  LAWYER
+  ATTENDANT
+}
+
+// ─── WHATSAPP ────────────────────────────────────────────────────────
+
+model WhatsappInstance {
+  id          String         @id @default(cuid())
+  officeId    String         @map("office_id")
+  name        String
+  phone       String?
+  status      WhatsappStatus @default(DISCONNECTED)
+  sessionData Json?          @map("session_data")
+  qrCode      String?        @map("qr_code")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  office        Office         @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  conversations Conversation[]
+
+  @@map("whatsapp_instances")
+}
+
+enum WhatsappStatus {
+  CONNECTED
+  DISCONNECTED
+  CONNECTING
+  QR_READY
+}
+
+// ─── CONTACTS ────────────────────────────────────────────────────────
+
+model Contact {
+  id        String      @id @default(cuid())
+  officeId  String      @map("office_id")
+  phone     String
+  name      String?
+  email     String?
+  cpf       String?
+  type      ContactType @default(LEAD)
+  avatar    String?
+  metadata  Json        @default("{}")
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  office        Office         @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  conversations Conversation[]
+  lead          Lead?
+  processes     Process[]
+
+  @@unique([officeId, phone])
+  @@map("contacts")
+}
+
+enum ContactType {
+  LEAD
+  CLIENT
+}
+
+// ─── CONVERSATIONS ───────────────────────────────────────────────────
+
+model Conversation {
+  id                 String             @id @default(cuid())
+  officeId           String             @map("office_id")
+  contactId          String             @map("contact_id")
+  whatsappInstanceId String             @map("whatsapp_instance_id")
+  status             ConversationStatus @default(BOT_ACTIVE)
+  assignedToId       String?            @map("assigned_to_id")
+  lastMessageAt      DateTime?          @map("last_message_at")
+  humanTakeoverAt    DateTime?          @map("human_takeover_at")
+  aiModel            String?            @map("ai_model")
+  metadata           Json               @default("{}")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  office           Office           @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  contact          Contact          @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  whatsappInstance WhatsappInstance  @relation(fields: [whatsappInstanceId], references: [id])
+  assignedTo       User?            @relation("AssignedTo", fields: [assignedToId], references: [id])
+  messages         Message[]
+
+  @@index([officeId, status])
+  @@index([officeId, lastMessageAt])
+  @@map("conversations")
+}
+
+enum ConversationStatus {
+  BOT_ACTIVE
+  HUMAN_ACTIVE
+  CLOSED
+  WAITING
+}
+
+// ─── MESSAGES ────────────────────────────────────────────────────────
+
+model Message {
+  id             String        @id @default(cuid())
+  conversationId String        @map("conversation_id")
+  sender         MessageSender
+  content        String
+  type           MessageType   @default(TEXT)
+  whatsappMsgId  String?       @map("whatsapp_msg_id")
+  sentByUserId   String?       @map("sent_by_user_id")
+  aiModel        String?       @map("ai_model")
+  aiTokensUsed   Int?          @map("ai_tokens_used")
+  aiCost         Decimal?      @map("ai_cost") @db.Decimal(10, 6)
+  metadata       Json          @default("{}")
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sentByUser   User?        @relation("SentByUser", fields: [sentByUserId], references: [id])
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
+}
+
+enum MessageSender {
+  CONTACT
+  BOT
+  USER
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  AUDIO
+  DOCUMENT
+  VIDEO
+  STICKER
+  LOCATION
+}
+
+// ─── LEADS / CRM ────────────────────────────────────────────────────
+
+model Lead {
+  id          String       @id @default(cuid())
+  officeId    String       @map("office_id")
+  contactId   String       @unique @map("contact_id")
+  score       LeadScore    @default(COLD)
+  legalArea   String?      @map("legal_area")
+  problem     String?
+  urgency     LeadUrgency?
+  income      String?
+  origin      String?
+  notes       String?
+  tags        String[]
+  convertedAt DateTime?    @map("converted_at")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  office  Office  @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([officeId, score])
+  @@map("leads")
+}
+
+enum LeadScore {
+  COLD
+  WARM
+  HOT
+  CONVERTED
+  LOST
+}
+
+enum LeadUrgency {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+// ─── PROCESSES ───────────────────────────────────────────────────────
+
+model Process {
+  id              String    @id @default(cuid())
+  officeId        String    @map("office_id")
+  contactId       String    @map("contact_id")
+  number          String
+  court           String?
+  judge           String?
+  subject         String?
+  legalArea       String?   @map("legal_area")
+  status          String?
+  lastMovement    String?   @map("last_movement")
+  lastMovementAt  DateTime? @map("last_movement_at")
+  externalSystem  String?   @map("external_system")
+  externalId      String?   @map("external_id")
+  metadata        Json      @default("{}")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  office    Office            @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  contact   Contact           @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  movements ProcessMovement[]
+
+  @@unique([officeId, number])
+  @@map("processes")
+}
+
+model ProcessMovement {
+  id          String   @id @default(cuid())
+  processId   String   @map("process_id")
+  title       String
+  description String?
+  date        DateTime
+  notified    Boolean  @default(false)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  process Process @relation(fields: [processId], references: [id], onDelete: Cascade)
+
+  @@index([processId, date])
+  @@map("process_movements")
+}
+
+// ─── KNOWLEDGE BASE (RAG) ───────────────────────────────────────────
+
+model KnowledgeDocument {
+  id         String         @id @default(cuid())
+  officeId   String         @map("office_id")
+  title      String
+  fileName   String         @map("file_name")
+  fileUrl    String         @map("file_url")
+  fileType   String         @map("file_type")
+  fileSize   Int            @map("file_size")
+  status     DocumentStatus @default(PROCESSING)
+  chunkCount Int            @default(0) @map("chunk_count")
+  metadata   Json           @default("{}")
+  createdAt  DateTime       @default(now()) @map("created_at")
+  updatedAt  DateTime       @updatedAt @map("updated_at")
+
+  office Office           @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  chunks KnowledgeChunk[]
+
+  @@index([officeId])
+  @@map("knowledge_documents")
+}
+
+enum DocumentStatus {
+  PROCESSING
+  READY
+  ERROR
+}
+
+model KnowledgeChunk {
+  id         String                       @id @default(cuid())
+  documentId String                       @map("document_id")
+  content    String
+  embedding  Unsupported("vector(3072)")?
+  chunkIndex Int                          @map("chunk_index")
+  metadata   Json                         @default("{}")
+  createdAt  DateTime                     @default(now()) @map("created_at")
+
+  document KnowledgeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@map("knowledge_chunks")
+}
+
+// ─── AI CONFIG ───────────────────────────────────────────────────────
+
+model AiConfig {
+  id              String   @id @default(cuid())
+  officeId        String   @map("office_id")
+  name            String
+  systemPrompt    String   @map("system_prompt")
+  model           String   @default("gpt-4o")
+  temperature     Float    @default(0.7)
+  maxTokens       Int      @default(1024) @map("max_tokens")
+  legalAreas      String[] @map("legal_areas")
+  isDefault       Boolean  @default(false) @map("is_default")
+  businessHours   Json     @default("{}") @map("business_hours")
+  offHoursMessage String?  @map("off_hours_message")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  office Office @relation(fields: [officeId], references: [id], onDelete: Cascade)
+
+  @@map("ai_configs")
+}
