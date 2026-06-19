@@ -41,7 +41,7 @@ import {
   CheckCircle2,
   AlertCircle,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -62,6 +62,8 @@ function formatFileSize(bytes: number) {
 
 export default function KnowledgePage() {
   const [search, setSearch] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const docsQuery = trpc.knowledge.list.useQuery(
     search ? { search } : undefined
@@ -75,6 +77,34 @@ export default function KnowledgePage() {
   });
 
   const docs = docsQuery.data ?? [];
+
+  async function handleUpload(file: File) {
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("title", file.name.replace(/\.[^/.]+$/, ""));
+
+      const res = await fetch("/api/knowledge/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.error ?? "Erro no upload");
+        return;
+      }
+
+      docsQuery.refetch();
+      statsQuery.refetch();
+    } catch {
+      alert("Erro ao enviar arquivo");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -96,9 +126,26 @@ export default function KnowledgePage() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <Button disabled>
-            <Upload className="mr-1.5 h-3.5 w-3.5" />
-            Upload
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".pdf,.txt"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleUpload(file);
+            }}
+          />
+          <Button
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+          >
+            {uploading ? (
+              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Upload className="mr-1.5 h-3.5 w-3.5" />
+            )}
+            {uploading ? "Enviando..." : "Upload"}
           </Button>
         </div>
       </div>

@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
     "openai",
     "@google/generative-ai",
     "@anthropic-ai/sdk",
+    "pdf-parse",
   ],
 };
 

@@ -1,6 +1,7 @@
 import type { BaileysEventMap } from "@whiskeysockets/baileys";
 import { prisma } from "@/lib/prisma";
 import { chat, buildSystemPrompt, buildConversationMessages } from "@/lib/ai";
+import { searchKnowledge, buildRagContext } from "@/lib/rag";
 import { sendMessage } from "./manager";
 
 const MAX_CONTEXT_MESSAGES = 20;
@@ -186,13 +187,23 @@ async function generateAIResponse(
     select: { sender: true, content: true },
   });
 
+  let ragContext = "";
+  try {
+    const ragResults = await searchKnowledge(officeId, newMessage, 3);
+    ragContext = buildRagContext(ragResults);
+  } catch {
+    // RAG search failed — continue without context
+  }
+
   const systemPrompt = buildSystemPrompt({
     officeName: office.name,
     contactType: contactType as "LEAD" | "CLIENT",
     contactName,
     legalAreas: aiConfig?.legalAreas ?? [],
-    customPrompt: aiConfig?.systemPrompt,
-  });
+    customPrompt: aiConfig?.systemPrompt
+      ? aiConfig.systemPrompt + ragContext
+      : undefined,
+  }) + (aiConfig?.systemPrompt ? "" : ragContext);
 
   const history = previousMessages
     .filter((m) => m.sender === "CONTACT" || m.sender === "BOT")
