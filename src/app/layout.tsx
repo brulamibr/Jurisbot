@@ -35,6 +35,13 @@ export default function RootLayout({
       className={`${inter.variable} ${geistMono.variable} h-full`}
       suppressHydrationWarning
     >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{if(localStorage.getItem('theme')==='dark'||(!localStorage.getItem('theme')&&matchMedia('(prefers-color-scheme:dark)').matches))document.documentElement.classList.add('dark')}catch{}`,
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col">
         <TRPCProvider>
           <TooltipProvider>{children}</TooltipProvider>

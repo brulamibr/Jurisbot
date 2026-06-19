@@ -11,8 +11,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { LogOut, Settings, User, Menu } from "lucide-react";
+import { LogOut, Settings, User, Menu, Moon, Sun } from "lucide-react";
 import { signOut } from "@/lib/supabase/actions";
+import { useEffect, useState } from "react";
 
 interface HeaderProps {
   userName?: string;
@@ -48,6 +49,18 @@ export function Header({
   onToggleSidebar,
 }: HeaderProps) {
   const router = useRouter();
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    setIsDark(document.documentElement.classList.contains("dark"));
+  }, []);
+
+  function toggleDarkMode() {
+    const next = !isDark;
+    document.documentElement.classList.toggle("dark", next);
+    localStorage.setItem("theme", next ? "dark" : "light");
+    setIsDark(next);
+  }
 
   return (
     <header className="flex h-14 items-center justify-between border-b bg-background px-4">
@@ -66,6 +79,11 @@ export function Header({
           </span>
         )}
       </div>
+
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" size="icon" onClick={toggleDarkMode}>
+          {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+        </Button>
 
       <DropdownMenu>
         <DropdownMenuTrigger
@@ -115,6 +133,7 @@ export function Header({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      </div>
     </header>
   );
 }
