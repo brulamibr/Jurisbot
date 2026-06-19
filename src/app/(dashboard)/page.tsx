@@ -6,6 +6,7 @@ import { RecentConversations } from "@/components/dashboard/recent-conversations
 import { LeadsByArea } from "@/components/dashboard/leads-by-area";
 import { LeadFunnel } from "@/components/dashboard/lead-funnel";
 import { WhatsappStatus } from "@/components/dashboard/whatsapp-status";
+import { OnboardingChecklist } from "@/components/dashboard/onboarding-checklist";
 
 export default function DashboardPage() {
   const stats = trpc.dashboard.stats.useQuery();
@@ -19,6 +20,8 @@ export default function DashboardPage() {
           Visão geral do atendimento do escritório
         </p>
       </div>
+
+      <OnboardingChecklist />
 
       <StatCards
         activeConversations={stats.data?.activeConversations ?? 0}
