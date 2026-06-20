@@ -2,7 +2,7 @@ import type { BaileysEventMap } from "@whiskeysockets/baileys";
 import { prisma } from "@/lib/prisma";
 import { chat, buildSystemPrompt, buildConversationMessages } from "@/lib/ai";
 import { searchKnowledge, buildRagContext } from "@/lib/rag";
-import { sendMessage } from "./manager";
+import { sendMessage, resolvePhoneFromLid } from "./manager";
 
 const MAX_CONTEXT_MESSAGES = 20;
 
@@ -23,7 +23,18 @@ export async function handleIncomingMessages(
     if (msg.key.fromMe) continue;
     if (!msg.message) continue;
 
-    const phone = msg.key.remoteJid?.replace("@s.whatsapp.net", "");
+    const remoteJid = msg.key.remoteJid;
+    if (!remoteJid) continue;
+    if (remoteJid.endsWith("@g.us")) continue;
+
+    const isLid = remoteJid.endsWith("@lid");
+    let phone = remoteJid.split("@")[0];
+
+    if (isLid) {
+      const resolved = await resolvePhoneFromLid(instanceId, remoteJid);
+      if (resolved) phone = resolved;
+    }
+
     if (!phone) continue;
 
     const content =

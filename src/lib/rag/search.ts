@@ -10,9 +10,10 @@ export interface SearchResult {
 export async function searchKnowledge(
   officeId: string,
   query: string,
-  topK = 5
+  topK = 5,
+  openaiApiKey?: string
 ): Promise<SearchResult[]> {
-  const embedding = await generateEmbedding(query);
+  const embedding = await generateEmbedding(query, openaiApiKey);
   const vectorStr = `[${embedding.join(",")}]`;
 
   const results = await prisma.$queryRawUnsafe<
@@ -42,7 +43,7 @@ export function buildRagContext(results: SearchResult[]): string {
   if (results.length === 0) return "";
 
   const contextParts = results.map(
-    (r, i) =>
+    (r) =>
       `[Documento: ${r.documentTitle}]\n${r.content}`
   );
 

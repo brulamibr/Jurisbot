@@ -1,26 +1,23 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import type { AIProvider, AIMessage, AIResponse, AIOptions } from "../types";
+import type { AIProvider, AIMessage, AIResponse, AIOptions, AIApiKeys } from "../types";
 
 const COST_PER_1K_INPUT = 0.00125;
 const COST_PER_1K_OUTPUT = 0.005;
 
 export class GoogleProvider implements AIProvider {
   name = "google";
-  private client: GoogleGenerativeAI | null = null;
 
-  isAvailable(): boolean {
-    return !!process.env.GOOGLE_AI_API_KEY;
+  private resolveKey(apiKeys?: AIApiKeys): string | undefined {
+    return apiKeys?.google || process.env.GOOGLE_AI_API_KEY;
   }
 
-  private getClient(): GoogleGenerativeAI {
-    if (!this.client) {
-      this.client = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY!);
-    }
-    return this.client;
+  isAvailable(apiKeys?: AIApiKeys): boolean {
+    return !!this.resolveKey(apiKeys);
   }
 
-  async chat(messages: AIMessage[], options?: AIOptions): Promise<AIResponse> {
-    const client = this.getClient();
+  async chat(messages: AIMessage[], options?: AIOptions, apiKey?: string): Promise<AIResponse> {
+    const key = apiKey || process.env.GOOGLE_AI_API_KEY!;
+    const client = new GoogleGenerativeAI(key);
     const modelName = options?.model ?? "gemini-1.5-pro";
     const model = client.getGenerativeModel({
       model: modelName,

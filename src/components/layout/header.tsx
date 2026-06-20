@@ -13,7 +13,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { LogOut, Settings, User, Menu, Moon, Sun } from "lucide-react";
 import { signOut } from "@/lib/supabase/actions";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 interface HeaderProps {
   userName?: string;
@@ -49,11 +49,12 @@ export function Header({
   onToggleSidebar,
 }: HeaderProps) {
   const router = useRouter();
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    setIsDark(document.documentElement.classList.contains("dark"));
-  }, []);
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof document !== "undefined") {
+      return document.documentElement.classList.contains("dark");
+    }
+    return false;
+  });
 
   function toggleDarkMode() {
     const next = !isDark;

@@ -4,7 +4,9 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Phone, Mail, FileText, Flame, Snowflake, ThermometerSun } from "lucide-react";
+import { Phone, Mail, FileText, Flame, Snowflake, ThermometerSun, XCircle, ExternalLink } from "lucide-react";
+import { formatPhone } from "@/lib/utils";
+import Link from "next/link";
 
 interface Conversation {
   contact: {
@@ -36,6 +38,7 @@ const scoreConfig: Record<string, { label: string; icon: React.ElementType; clas
   WARM: { label: "Morno", icon: ThermometerSun, className: "text-amber-500" },
   HOT: { label: "Quente", icon: Flame, className: "text-red-500" },
   CONVERTED: { label: "Convertido", icon: FileText, className: "text-green-500" },
+  LOST: { label: "Perdido", icon: XCircle, className: "text-zinc-400" },
 };
 
 const urgencyLabels: Record<string, string> = {
@@ -56,7 +59,7 @@ function getInitials(name: string) {
 
 export function ContactPanel({ conversation }: { conversation: Conversation }) {
   const { contact } = conversation;
-  const name = contact.name ?? contact.phone;
+  const name = contact.name ?? formatPhone(contact.phone);
 
   return (
     <ScrollArea className="h-full">
@@ -72,6 +75,13 @@ export function ContactPanel({ conversation }: { conversation: Conversation }) {
           <Badge variant={contact.type === "CLIENT" ? "default" : "outline"} className="mt-1">
             {contact.type === "CLIENT" ? "Cliente" : "Lead"}
           </Badge>
+          <Link
+            href="/contacts"
+            className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:underline"
+          >
+            <ExternalLink className="h-3 w-3" />
+            Editar contato
+          </Link>
         </div>
 
         <Separator className="my-4" />
@@ -83,7 +93,7 @@ export function ContactPanel({ conversation }: { conversation: Conversation }) {
           </h4>
           <div className="flex items-center gap-2 text-sm">
             <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-            {contact.phone}
+            {formatPhone(contact.phone)}
           </div>
           {contact.email && (
             <div className="flex items-center gap-2 text-sm">

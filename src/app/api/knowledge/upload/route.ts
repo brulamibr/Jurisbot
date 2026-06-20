@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
 
   const dbUser = await prisma.user.findUnique({
     where: { supabaseId: user.id },
-    select: { officeId: true },
+    select: { officeId: true, office: { select: { openaiApiKey: true } } },
   });
 
   if (!dbUser) {
@@ -83,7 +83,8 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  processDocument(doc.id).catch((error) => {
+  const openaiKey = dbUser.office?.openaiApiKey ?? undefined;
+  processDocument(doc.id, openaiKey).catch((error) => {
     console.error(`Failed to process document ${doc.id}:`, error);
   });
 

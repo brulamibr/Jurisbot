@@ -148,11 +148,85 @@ export const conversationRouter = router({
       });
     }),
 
+  startNew: protectedProcedure
+    .input(
+      z.object({
+        phone: z.string().min(8),
+        name: z.string().optional(),
+        content: z.string().min(1),
+        personaId: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const cleanPhone = input.phone.replace(/\D/g, "");
+
+      const instance = await ctx.prisma.whatsappInstance.findFirst({
+        where: { officeId: ctx.dbUser.officeId, status: "CONNECTED" },
+      });
+      if (!instance) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Nenhuma instância WhatsApp conectada" });
+      }
+
+      const persona = await ctx.prisma.persona.findFirst({
+        where: { id: input.personaId, officeId: ctx.dbUser.officeId, isActive: true },
+      });
+      if (!persona) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Persona não encontrada" });
+      }
+
+      const contact = await ctx.prisma.contact.upsert({
+        where: {
+          officeId_phone: { officeId: ctx.dbUser.officeId, phone: cleanPhone },
+        },
+        create: {
+          officeId: ctx.dbUser.officeId,
+          phone: cleanPhone,
+          name: input.name || null,
+          type: "LEAD",
+        },
+        update: {
+          ...(input.name ? { name: input.name } : {}),
+        },
+      });
+
+      const conversation = await ctx.prisma.conversation.create({
+        data: {
+          officeId: ctx.dbUser.officeId,
+          contactId: contact.id,
+          whatsappInstanceId: instance.id,
+          status: "HUMAN_ACTIVE",
+          assignedToId: ctx.dbUser.id,
+          humanTakeoverAt: new Date(),
+          lastMessageAt: new Date(),
+        },
+      });
+
+      const signature = `\n\n— *${persona.name}*, ${persona.role}`;
+      const fullContent = input.content + signature;
+
+      await ctx.prisma.message.create({
+        data: {
+          conversationId: conversation.id,
+          sender: "USER",
+          content: input.content,
+          type: "TEXT",
+          sentByUserId: ctx.dbUser.id,
+          metadata: { personaId: persona.id, personaName: persona.name, personaRole: persona.role },
+        },
+      });
+
+      const { sendMessage: send } = await import("@/lib/whatsapp");
+      await send(instance.id, cleanPhone, fullContent);
+
+      return conversation;
+    }),
+
   sendMessage: protectedProcedure
     .input(
       z.object({
         conversationId: z.string(),
         content: z.string().min(1),
+        personaId: z.string().min(1),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -168,6 +242,17 @@ export const conversationRouter = router({
         throw new TRPCError({ code: "NOT_FOUND" });
       }
 
+      const persona = await ctx.prisma.persona.findFirst({
+        where: { id: input.personaId, officeId: ctx.dbUser.officeId, isActive: true },
+      });
+
+      if (!persona) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Selecione uma persona válida" });
+      }
+
+      const signature = `\n\n— *${persona.name}*, ${persona.role}`;
+      const fullContent = input.content + signature;
+
       const message = await ctx.prisma.message.create({
         data: {
           conversationId: input.conversationId,
@@ -175,6 +260,7 @@ export const conversationRouter = router({
           content: input.content,
           type: "TEXT",
           sentByUserId: ctx.dbUser.id,
+          metadata: { personaId: persona.id, personaName: persona.name, personaRole: persona.role },
         },
       });
 
@@ -183,13 +269,12 @@ export const conversationRouter = router({
         data: { lastMessageAt: new Date() },
       });
 
-      // Send via WhatsApp if instance is connected
       if (conversation.whatsappInstance.status === "CONNECTED") {
         const { sendMessage } = await import("@/lib/whatsapp");
         await sendMessage(
           conversation.whatsappInstanceId,
           conversation.contact.phone,
-          input.content
+          fullContent
         );
       }
 

@@ -82,7 +82,6 @@ export function OnboardingChecklist() {
       <CardContent>
         <div className="space-y-3">
           {steps.map((step) => {
-            const Icon = step.icon;
             return (
               <div
                 key={step.key}

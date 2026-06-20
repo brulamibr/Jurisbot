@@ -44,3 +44,11 @@ next-env.d.ts
 
 /src/generated/prisma
 /.whatsapp-sessions
+
+# claude code
+.claude/
+
+# sensitive
+*.key
+*.p12
+credentials*.json

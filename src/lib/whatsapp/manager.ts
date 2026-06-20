@@ -56,6 +56,7 @@ export async function connectInstance(
   await updateInstanceStatus(instanceId, "CONNECTING");
 
   const authDir = getAuthDir(instanceId);
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- Baileys function, not a React hook
   const { state, saveCreds } = await useMultiFileAuthState(authDir);
   const { version } = await fetchLatestBaileysVersion();
 
@@ -144,6 +145,34 @@ export async function sendMessage(
 
   const jid = phone.includes("@") ? phone : `${phone}@s.whatsapp.net`;
   await session.socket.sendMessage(jid, { text });
+}
+
+export async function resolvePhoneFromLid(
+  instanceId: string,
+  lidJid: string
+): Promise<string | null> {
+  const session = sessions.get(instanceId);
+  if (!session) return null;
+
+  try {
+    const store = (session.socket as Record<string, unknown>)["store"] as
+      | { contacts?: Record<string, { id?: string; notify?: string }> }
+      | undefined;
+
+    if (store?.contacts?.[lidJid]?.id) {
+      return store.contacts[lidJid].id.split("@")[0];
+    }
+
+    const results = await session.socket.onWhatsApp(lidJid);
+    const result = results?.[0];
+    if (result?.exists && result.jid) {
+      return result.jid.split("@")[0];
+    }
+  } catch {
+    // Resolution failed — fall through
+  }
+
+  return null;
 }
 
 export function getSession(instanceId: string) {

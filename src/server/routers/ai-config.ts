@@ -104,7 +104,20 @@ export const aiConfigRouter = router({
       return ctx.prisma.aiConfig.delete({ where: { id: input.id } });
     }),
 
-  availableProviders: protectedProcedure.query(() => {
-    return listAvailableProviders();
+  availableProviders: protectedProcedure.query(async ({ ctx }) => {
+    const office = await ctx.prisma.office.findUnique({
+      where: { id: ctx.dbUser.officeId },
+      select: {
+        openaiApiKey: true,
+        googleApiKey: true,
+        anthropicApiKey: true,
+      },
+    });
+
+    return listAvailableProviders({
+      openai: office?.openaiApiKey ?? undefined,
+      google: office?.googleApiKey ?? undefined,
+      anthropic: office?.anthropicApiKey ?? undefined,
+    });
   }),
 });

@@ -8,6 +8,13 @@ import { conversationRouter } from "./conversation";
 import { leadRouter } from "./lead";
 import { processRouter } from "./process";
 import { knowledgeRouter } from "./knowledge";
+import { personaRouter } from "./persona";
+import { scheduledMessageRouter } from "./scheduled-message";
+import { quickMessageRouter } from "./quick-message";
+import { labelRouter } from "./label";
+import { broadcastRouter } from "./broadcast";
+import { funnelRouter } from "./funnel";
+import { contactRouter } from "./contact";
 
 export const appRouter = router({
   user: userRouter,
@@ -19,6 +26,13 @@ export const appRouter = router({
   lead: leadRouter,
   process: processRouter,
   knowledge: knowledgeRouter,
+  persona: personaRouter,
+  scheduledMessage: scheduledMessageRouter,
+  quickMessage: quickMessageRouter,
+  label: labelRouter,
+  broadcast: broadcastRouter,
+  funnel: funnelRouter,
+  contact: contactRouter,
 });
 
 export type AppRouter = typeof appRouter;

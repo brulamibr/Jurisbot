@@ -23,4 +23,55 @@ export const officeRouter = router({
         data: input,
       });
     }),
+
+  getApiKeys: adminProcedure.query(async ({ ctx }) => {
+    const office = await ctx.prisma.office.findUnique({
+      where: { id: ctx.dbUser.officeId },
+      select: {
+        openaiApiKey: true,
+        googleApiKey: true,
+        anthropicApiKey: true,
+      },
+    });
+
+    if (!office) return { openai: "", google: "", anthropic: "" };
+
+    return {
+      openai: office.openaiApiKey ? maskKey(office.openaiApiKey) : "",
+      google: office.googleApiKey ? maskKey(office.googleApiKey) : "",
+      anthropic: office.anthropicApiKey ? maskKey(office.anthropicApiKey) : "",
+    };
+  }),
+
+  updateApiKeys: adminProcedure
+    .input(
+      z.object({
+        openaiApiKey: z.string().optional(),
+        googleApiKey: z.string().optional(),
+        anthropicApiKey: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const data: Record<string, string | null> = {};
+
+      if (input.openaiApiKey !== undefined) {
+        data.openaiApiKey = input.openaiApiKey || null;
+      }
+      if (input.googleApiKey !== undefined) {
+        data.googleApiKey = input.googleApiKey || null;
+      }
+      if (input.anthropicApiKey !== undefined) {
+        data.anthropicApiKey = input.anthropicApiKey || null;
+      }
+
+      return ctx.prisma.office.update({
+        where: { id: ctx.dbUser.officeId },
+        data,
+      });
+    }),
 });
+
+function maskKey(key: string): string {
+  if (key.length <= 8) return "••••••••";
+  return key.slice(0, 4) + "••••••••" + key.slice(-4);
+}

@@ -11,15 +11,23 @@ import {
   Settings,
   UserCircle,
   Smartphone,
+  CalendarClock,
+  MessageSquareText,
+  Megaphone,
+  Contact,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/conversations", label: "Conversas", icon: MessageSquare },
+  { href: "/contacts", label: "Contatos", icon: Contact },
   { href: "/leads", label: "Leads", icon: Users },
   { href: "/processes", label: "Processos", icon: Briefcase },
   { href: "/knowledge", label: "Base de Conhecimento", icon: BookOpen },
+  { href: "/quick-messages", label: "Msgs Rápidas", icon: MessageSquareText },
+  { href: "/broadcast", label: "Envio em Massa", icon: Megaphone },
+  { href: "/scheduled", label: "Agendamentos", icon: CalendarClock },
   { href: "/whatsapp", label: "WhatsApp", icon: Smartphone },
   { href: "/users", label: "Usuários", icon: UserCircle },
   { href: "/settings", label: "Configurações", icon: Settings },

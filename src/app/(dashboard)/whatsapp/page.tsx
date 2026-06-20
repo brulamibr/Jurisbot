@@ -25,8 +25,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Smartphone,
   Plus,
-  Wifi,
-  WifiOff,
   QrCode,
   Loader2,
   Trash2,

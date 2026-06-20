@@ -5,10 +5,12 @@ import { trpc } from "@/lib/trpc/client";
 import { ConversationList } from "@/components/conversations/conversation-list";
 import { ChatView } from "@/components/conversations/chat-view";
 import { ContactPanel } from "@/components/conversations/contact-panel";
+import { NewConversationDialog } from "@/components/conversations/new-conversation-dialog";
 
 export default function ConversationsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showContactPanel, setShowContactPanel] = useState(true);
+  const [showNewConv, setShowNewConv] = useState(false);
 
   const conversationsQuery = trpc.conversation.list.useQuery();
   const selectedConversation = trpc.conversation.getById.useQuery(
@@ -33,6 +35,7 @@ export default function ConversationsPage() {
           isLoading={conversationsQuery.isLoading}
           selectedId={selectedId}
           onSelect={setSelectedId}
+          onNewConversation={() => setShowNewConv(true)}
         />
       </div>
 
@@ -66,6 +69,15 @@ export default function ConversationsPage() {
           <ContactPanel conversation={selectedConversation.data} />
         </div>
       )}
+      <NewConversationDialog
+        open={showNewConv}
+        onOpenChange={setShowNewConv}
+        onSuccess={(convId) => {
+          setShowNewConv(false);
+          conversationsQuery.refetch();
+          setSelectedId(convId);
+        }}
+      />
     </div>
   );
 }

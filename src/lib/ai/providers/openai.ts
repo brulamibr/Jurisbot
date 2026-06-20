@@ -1,26 +1,23 @@
 import OpenAI from "openai";
-import type { AIProvider, AIMessage, AIResponse, AIOptions } from "../types";
+import type { AIProvider, AIMessage, AIResponse, AIOptions, AIApiKeys } from "../types";
 
 const COST_PER_1K_INPUT = 0.0025;
 const COST_PER_1K_OUTPUT = 0.01;
 
 export class OpenAIProvider implements AIProvider {
   name = "openai";
-  private client: OpenAI | null = null;
 
-  isAvailable(): boolean {
-    return !!process.env.OPENAI_API_KEY;
+  private resolveKey(apiKeys?: AIApiKeys): string | undefined {
+    return apiKeys?.openai || process.env.OPENAI_API_KEY;
   }
 
-  private getClient(): OpenAI {
-    if (!this.client) {
-      this.client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    }
-    return this.client;
+  isAvailable(apiKeys?: AIApiKeys): boolean {
+    return !!this.resolveKey(apiKeys);
   }
 
-  async chat(messages: AIMessage[], options?: AIOptions): Promise<AIResponse> {
-    const client = this.getClient();
+  async chat(messages: AIMessage[], options?: AIOptions, apiKey?: string): Promise<AIResponse> {
+    const key = apiKey || process.env.OPENAI_API_KEY;
+    const client = new OpenAI({ apiKey: key });
     const model = options?.model ?? "gpt-4o";
 
     const response = await client.chat.completions.create({

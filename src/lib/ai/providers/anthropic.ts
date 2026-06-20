@@ -1,26 +1,23 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { AIProvider, AIMessage, AIResponse, AIOptions } from "../types";
+import type { AIProvider, AIMessage, AIResponse, AIOptions, AIApiKeys } from "../types";
 
 const COST_PER_1K_INPUT = 0.003;
 const COST_PER_1K_OUTPUT = 0.015;
 
 export class AnthropicProvider implements AIProvider {
   name = "anthropic";
-  private client: Anthropic | null = null;
 
-  isAvailable(): boolean {
-    return !!process.env.ANTHROPIC_API_KEY;
+  private resolveKey(apiKeys?: AIApiKeys): string | undefined {
+    return apiKeys?.anthropic || process.env.ANTHROPIC_API_KEY;
   }
 
-  private getClient(): Anthropic {
-    if (!this.client) {
-      this.client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-    }
-    return this.client;
+  isAvailable(apiKeys?: AIApiKeys): boolean {
+    return !!this.resolveKey(apiKeys);
   }
 
-  async chat(messages: AIMessage[], options?: AIOptions): Promise<AIResponse> {
-    const client = this.getClient();
+  async chat(messages: AIMessage[], options?: AIOptions, apiKey?: string): Promise<AIResponse> {
+    const key = apiKey || process.env.ANTHROPIC_API_KEY;
+    const client = new Anthropic({ apiKey: key });
     const model = options?.model ?? "claude-sonnet-4-6";
 
     const systemMsg = messages.find((m) => m.role === "system");

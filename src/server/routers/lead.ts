@@ -44,6 +44,9 @@ export const leadRouter = router({
               },
             },
           },
+          labels: {
+            include: { label: true },
+          },
         },
         orderBy: { updatedAt: "desc" },
       });
@@ -65,6 +68,9 @@ export const leadRouter = router({
                 },
               },
             },
+          },
+          labels: {
+            include: { label: true },
           },
         },
       });

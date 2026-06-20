@@ -13,14 +13,20 @@ export interface AIResponse {
 
 export interface AIProvider {
   name: string;
-  isAvailable(): boolean;
-  chat(messages: AIMessage[], options?: AIOptions): Promise<AIResponse>;
+  isAvailable(apiKeys?: AIApiKeys): boolean;
+  chat(messages: AIMessage[], options?: AIOptions, apiKey?: string): Promise<AIResponse>;
 }
 
 export interface AIOptions {
   model?: string;
   temperature?: number;
   maxTokens?: number;
+}
+
+export interface AIApiKeys {
+  openai?: string;
+  google?: string;
+  anthropic?: string;
 }
 
 export type ProviderName = "openai" | "google" | "anthropic";

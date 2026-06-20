@@ -3,7 +3,7 @@ import { extractText } from "./extractor";
 import { chunkText } from "./chunker";
 import { generateEmbeddings } from "./embeddings";
 
-export async function processDocument(documentId: string): Promise<void> {
+export async function processDocument(documentId: string, openaiApiKey?: string): Promise<void> {
   const doc = await prisma.knowledgeDocument.findUnique({
     where: { id: documentId },
   });
@@ -33,7 +33,7 @@ export async function processDocument(documentId: string): Promise<void> {
       return;
     }
 
-    const embeddings = await generateEmbeddings(chunks.map((c) => c.content));
+    const embeddings = await generateEmbeddings(chunks.map((c) => c.content), openaiApiKey);
 
     await prisma.knowledgeChunk.deleteMany({
       where: { documentId },

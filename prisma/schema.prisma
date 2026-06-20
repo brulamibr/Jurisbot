@@ -18,9 +18,12 @@ model Office {
   phone     String?
   email     String?
   logo      String?
-  settings  Json     @default("{}")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  settings        Json     @default("{}")
+  openaiApiKey    String?  @map("openai_api_key")
+  googleApiKey    String?  @map("google_api_key")
+  anthropicApiKey String?  @map("anthropic_api_key")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
   users              User[]
   whatsappInstances  WhatsappInstance[]
@@ -30,8 +33,74 @@ model Office {
   processes          Process[]
   knowledgeDocuments KnowledgeDocument[]
   aiConfigs          AiConfig[]
+  personas              Persona[]
+  scheduledMessages     ScheduledMessage[]
+  quickMessageCategories QuickMessageCategory[]
+  labels                 Label[]
+  broadcasts             Broadcast[]
+  funnels                Funnel[]
 
   @@map("offices")
+}
+
+// ─── PERSONAS (assinaturas para atendimento humano) ─────────────────
+
+model Persona {
+  id        String   @id @default(cuid())
+  officeId  String   @map("office_id")
+  name      String
+  role      String
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  office            Office             @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  scheduledMessages ScheduledMessage[]
+  broadcasts        Broadcast[]
+
+  @@map("personas")
+}
+
+// ─── SCHEDULED MESSAGES ─────────────────────────────────────────────
+
+model ScheduledMessage {
+  id              String            @id @default(cuid())
+  officeId        String            @map("office_id")
+  contactId       String            @map("contact_id")
+  personaId       String            @map("persona_id")
+  content         String
+  fileUrl         String?           @map("file_url")
+  fileName        String?           @map("file_name")
+  scheduledAt     DateTime          @map("scheduled_at")
+  recurrence      Recurrence        @default(NONE)
+  recurrenceCount Int               @default(1) @map("recurrence_count")
+  sentCount       Int               @default(0) @map("sent_count")
+  nextSendAt      DateTime          @map("next_send_at")
+  lastSentAt      DateTime?         @map("last_sent_at")
+  status          ScheduledStatus   @default(PENDING)
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  office  Office  @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  persona Persona @relation(fields: [personaId], references: [id], onDelete: Cascade)
+
+  @@index([officeId, status, nextSendAt])
+  @@map("scheduled_messages")
+}
+
+enum Recurrence {
+  NONE
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum ScheduledStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  CANCELLED
 }
 
 // ─── USERS & AUTH ────────────────────────────────────────────────────
@@ -90,22 +159,36 @@ enum WhatsappStatus {
 // ─── CONTACTS ────────────────────────────────────────────────────────
 
 model Contact {
-  id        String      @id @default(cuid())
-  officeId  String      @map("office_id")
-  phone     String
-  name      String?
-  email     String?
-  cpf       String?
-  type      ContactType @default(LEAD)
-  avatar    String?
-  metadata  Json        @default("{}")
-  createdAt DateTime    @default(now()) @map("created_at")
-  updatedAt DateTime    @updatedAt @map("updated_at")
+  id             String      @id @default(cuid())
+  officeId       String      @map("office_id")
+  phone          String
+  name           String?
+  email          String?
+  cpf            String?
+  rg             String?
+  birthDate      DateTime?   @map("birth_date")
+  type           ContactType @default(LEAD)
+  avatar         String?
+  legalArea      String?     @map("legal_area")
+  company        String?
+  occupation     String?
+  address        String?
+  city           String?
+  state          String?
+  zipCode        String?     @map("zip_code")
+  proposalValue  Decimal?    @map("proposal_value") @db.Decimal(12, 2)
+  proposalStatus String?     @map("proposal_status")
+  referralSource String?     @map("referral_source")
+  notes          String?
+  metadata       Json        @default("{}")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
 
-  office        Office         @relation(fields: [officeId], references: [id], onDelete: Cascade)
-  conversations Conversation[]
-  lead          Lead?
-  processes     Process[]
+  office            Office             @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  conversations     Conversation[]
+  lead              Lead?
+  processes         Process[]
+  scheduledMessages ScheduledMessage[]
 
   @@unique([officeId, phone])
   @@map("contacts")
@@ -192,23 +275,26 @@ enum MessageType {
 // ─── LEADS / CRM ────────────────────────────────────────────────────
 
 model Lead {
-  id          String       @id @default(cuid())
-  officeId    String       @map("office_id")
-  contactId   String       @unique @map("contact_id")
-  score       LeadScore    @default(COLD)
-  legalArea   String?      @map("legal_area")
-  problem     String?
-  urgency     LeadUrgency?
-  income      String?
-  origin      String?
-  notes       String?
-  tags        String[]
-  convertedAt DateTime?    @map("converted_at")
-  createdAt   DateTime     @default(now()) @map("created_at")
-  updatedAt   DateTime     @updatedAt @map("updated_at")
+  id            String       @id @default(cuid())
+  officeId      String       @map("office_id")
+  contactId     String       @unique @map("contact_id")
+  score         LeadScore    @default(COLD)
+  funnelStageId String?      @map("funnel_stage_id")
+  legalArea     String?      @map("legal_area")
+  problem       String?
+  urgency       LeadUrgency?
+  income        String?
+  origin        String?
+  notes         String?
+  tags          String[]
+  convertedAt   DateTime?    @map("converted_at")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
 
-  office  Office  @relation(fields: [officeId], references: [id], onDelete: Cascade)
-  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  office      Office       @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  contact     Contact      @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  funnelStage FunnelStage? @relation(fields: [funnelStageId], references: [id])
+  labels      LeadLabel[]
 
   @@index([officeId, score])
   @@map("leads")
@@ -336,4 +422,162 @@ model AiConfig {
   office Office @relation(fields: [officeId], references: [id], onDelete: Cascade)
 
   @@map("ai_configs")
+}
+
+// ─── QUICK MESSAGES (respostas rápidas por categoria) ───────────────
+
+model QuickMessageCategory {
+  id        String   @id @default(cuid())
+  officeId  String   @map("office_id")
+  name      String
+  order     Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  office   Office         @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  messages QuickMessage[]
+
+  @@map("quick_message_categories")
+}
+
+model QuickMessage {
+  id         String  @id @default(cuid())
+  categoryId String  @map("category_id")
+  title      String
+  content    String
+  fileUrl    String? @map("file_url")
+  fileName   String? @map("file_name")
+  fileType   String? @map("file_type")
+  order      Int     @default(0)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  category QuickMessageCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@map("quick_messages")
+}
+
+// ─── LABELS (etiquetas coloridas para leads) ────────────────────────
+
+model Label {
+  id        String   @id @default(cuid())
+  officeId  String   @map("office_id")
+  name      String
+  color     String   @default("#6366f1")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  office Office      @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  leads  LeadLabel[]
+
+  @@unique([officeId, name])
+  @@map("labels")
+}
+
+model LeadLabel {
+  id      String @id @default(cuid())
+  leadId  String @map("lead_id")
+  labelId String @map("label_id")
+
+  lead  Lead  @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  label Label @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@unique([leadId, labelId])
+  @@map("lead_labels")
+}
+
+// ─── BROADCAST (envio em massa) ─────────────────────────────────────
+
+model Broadcast {
+  id            String           @id @default(cuid())
+  officeId      String           @map("office_id")
+  personaId     String           @map("persona_id")
+  name          String
+  content       String
+  fileUrl       String?          @map("file_url")
+  fileName      String?          @map("file_name")
+  audienceType  AudienceType     @map("audience_type")
+  audienceFilter Json            @default("{}") @map("audience_filter")
+  totalRecipients Int            @default(0) @map("total_recipients")
+  sentCount     Int              @default(0) @map("sent_count")
+  failedCount   Int              @default(0) @map("failed_count")
+  status        BroadcastStatus  @default(DRAFT)
+  scheduledAt   DateTime?        @map("scheduled_at")
+  startedAt     DateTime?        @map("started_at")
+  completedAt   DateTime?        @map("completed_at")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+
+  office     Office               @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  persona    Persona              @relation(fields: [personaId], references: [id])
+  recipients BroadcastRecipient[]
+
+  @@index([officeId, status])
+  @@map("broadcasts")
+}
+
+model BroadcastRecipient {
+  id          String          @id @default(cuid())
+  broadcastId String          @map("broadcast_id")
+  phone       String
+  name        String?
+  status      RecipientStatus @default(PENDING)
+  sentAt      DateTime?       @map("sent_at")
+  error       String?
+
+  broadcast Broadcast @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
+
+  @@index([broadcastId, status])
+  @@map("broadcast_recipients")
+}
+
+enum AudienceType {
+  ALL_CONTACTS
+  BY_LABEL
+  BY_GROUP
+  BY_FUNNEL
+  IMPORT_EXCEL
+}
+
+enum BroadcastStatus {
+  DRAFT
+  SENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum RecipientStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+// ─── FUNNELS (funis customizáveis) ──────────────────────────────────
+
+model Funnel {
+  id        String   @id @default(cuid())
+  officeId  String   @map("office_id")
+  name      String
+  isDefault Boolean  @default(false) @map("is_default")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  office Office        @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  stages FunnelStage[]
+
+  @@map("funnels")
+}
+
+model FunnelStage {
+  id       String @id @default(cuid())
+  funnelId String @map("funnel_id")
+  name     String
+  color    String @default("#6366f1")
+  icon     String @default("circle")
+  order    Int    @default(0)
+
+  funnel Funnel @relation(fields: [funnelId], references: [id], onDelete: Cascade)
+  leads  Lead[]
+
+  @@map("funnel_stages")
 }

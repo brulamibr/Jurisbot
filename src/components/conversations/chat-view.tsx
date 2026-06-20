@@ -5,22 +5,31 @@ import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   ArrowLeft,
   Bot,
   Hand,
-  RotateCcw,
   Send,
   PanelRight,
-  User,
   X,
+  UserCircle,
+  MessageSquareText,
+  ChevronDown,
+  FileAudio,
+  Paperclip,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { cn } from "@/lib/utils";
+import { cn, formatPhone } from "@/lib/utils";
 
 interface Message {
   id: string;
@@ -29,6 +38,7 @@ interface Message {
   createdAt: Date;
   aiModel: string | null;
   sentByUser: { name: string } | null;
+  metadata: unknown;
 }
 
 interface Conversation {
@@ -63,7 +73,12 @@ export function ChatView({
   onRefresh: () => void;
 }) {
   const [input, setInput] = useState("");
+  const [selectedPersonaId, setSelectedPersonaId] = useState<string>("");
+  const [showQuickMessages, setShowQuickMessages] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const personas = trpc.persona.list.useQuery();
+  const quickCategories = trpc.quickMessage.listCategories.useQuery();
 
   const takeOver = trpc.conversation.takeOver.useMutation({
     onSuccess: onRefresh,
@@ -95,14 +110,17 @@ export function ChatView({
     );
   }
 
-  const contactName = conversation.contact.name ?? conversation.contact.phone;
+  const contactName = conversation.contact.name ?? formatPhone(conversation.contact.phone);
   const canSend = conversation.status === "HUMAN_ACTIVE";
+  const personaList = personas.data ?? [];
+  const selectedPersona = personaList.find((p) => p.id === selectedPersonaId);
 
   function handleSend() {
-    if (!input.trim() || !conversation) return;
+    if (!input.trim() || !conversation || !selectedPersonaId) return;
     sendMsg.mutate({
       conversationId: conversation.id,
       content: input.trim(),
+      personaId: selectedPersonaId,
     });
   }
 
@@ -208,6 +226,9 @@ export function ChatView({
             {messages.map((msg) => {
               const isContact = msg.sender === "CONTACT";
               const isBot = msg.sender === "BOT";
+              const meta = msg.metadata as Record<string, string> | null;
+              const personaName = meta?.personaName;
+              const personaRole = meta?.personaRole;
 
               return (
                 <div
@@ -229,12 +250,14 @@ export function ChatView({
                         {isBot ? (
                           <Bot className="h-3 w-3" />
                         ) : (
-                          <User className="h-3 w-3" />
+                          <UserCircle className="h-3 w-3" />
                         )}
                         <span className="text-xs opacity-70">
                           {isBot
                             ? `IA${msg.aiModel ? ` (${msg.aiModel})` : ""}`
-                            : msg.sentByUser?.name ?? "Atendente"}
+                            : personaName
+                              ? `${personaName}, ${personaRole}`
+                              : msg.sentByUser?.name ?? "Atendente"}
                         </span>
                       </div>
                     )}
@@ -263,22 +286,120 @@ export function ChatView({
       {conversation.status !== "CLOSED" && (
         <div className="border-t p-3">
           {canSend ? (
-            <div className="flex gap-2">
-              <Textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Digite sua mensagem..."
-                className="min-h-[2.5rem] max-h-32 resize-none"
-                rows={1}
-              />
-              <Button
-                onClick={handleSend}
-                disabled={!input.trim() || sendMsg.isPending}
-                size="icon"
-              >
-                <Send className="h-4 w-4" />
-              </Button>
+            <div className="space-y-2">
+              {/* Persona selector */}
+              <div className="flex items-center gap-2">
+                <UserCircle className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <Select
+                  value={selectedPersonaId}
+                  onValueChange={(v) => v && setSelectedPersonaId(v)}
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Selecione uma persona para enviar..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {personaList.length === 0 ? (
+                      <div className="px-3 py-2 text-xs text-muted-foreground">
+                        Nenhuma persona cadastrada. Crie em Configurações → Personas.
+                      </div>
+                    ) : (
+                      personaList.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name} — {p.role}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Quick messages panel */}
+              {showQuickMessages && (
+                <div className="rounded-md border bg-muted/30 p-2 max-h-48 overflow-y-auto">
+                  {(quickCategories.data ?? []).length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-2">
+                      Nenhuma mensagem rápida. Crie em Msgs Rápidas.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {(quickCategories.data ?? []).map((cat) => (
+                        <div key={cat.id}>
+                          <p className="text-xs font-semibold text-muted-foreground mb-1">
+                            {cat.name}
+                          </p>
+                          <div className="grid gap-1">
+                            {cat.messages.map((qm) => (
+                              <button
+                                key={qm.id}
+                                onClick={() => {
+                                  setInput(qm.content);
+                                  setShowQuickMessages(false);
+                                }}
+                                className="flex items-center gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-accent transition-colors"
+                              >
+                                <MessageSquareText className="h-3 w-3 shrink-0 text-primary" />
+                                <span className="font-medium">{qm.title}</span>
+                                {qm.fileName && (
+                                  qm.fileType?.startsWith("audio/") ? (
+                                    <FileAudio className="h-3 w-3 text-muted-foreground" />
+                                  ) : (
+                                    <Paperclip className="h-3 w-3 text-muted-foreground" />
+                                  )
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Message input */}
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="shrink-0"
+                  title="Mensagens rápidas"
+                  onClick={() => setShowQuickMessages(!showQuickMessages)}
+                >
+                  {showQuickMessages ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <MessageSquareText className="h-4 w-4" />
+                  )}
+                </Button>
+                <Textarea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={
+                    selectedPersona
+                      ? `Mensagem como ${selectedPersona.name}...`
+                      : "Selecione uma persona acima"
+                  }
+                  className="min-h-[2.5rem] max-h-32 resize-none"
+                  rows={1}
+                  disabled={!selectedPersonaId}
+                />
+                <Button
+                  onClick={handleSend}
+                  disabled={!input.trim() || !selectedPersonaId || sendMsg.isPending}
+                  size="icon"
+                  title={!selectedPersonaId ? "Selecione uma persona primeiro" : "Enviar"}
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Signature preview */}
+              {selectedPersona && input.trim() && (
+                <p className="text-xs text-muted-foreground italic">
+                  Assinatura: — <strong>{selectedPersona.name}</strong>, {selectedPersona.role}
+                </p>
+              )}
             </div>
           ) : (
             <div className="flex items-center justify-center gap-2 rounded-md bg-muted px-3 py-2">

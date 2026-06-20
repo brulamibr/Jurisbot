@@ -2,14 +2,15 @@
 
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Bot, User, Clock } from "lucide-react";
+import { Search, Bot, User, Clock, Plus } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { cn } from "@/lib/utils";
+import { cn, formatPhone } from "@/lib/utils";
 
 interface ConversationItem {
   id: string;
@@ -40,11 +41,13 @@ export function ConversationList({
   isLoading,
   selectedId,
   onSelect,
+  onNewConversation,
 }: {
   conversations: ConversationItem[];
   isLoading: boolean;
   selectedId: string | null;
   onSelect: (id: string) => void;
+  onNewConversation?: () => void;
 }) {
   const [search, setSearch] = useState("");
 
@@ -59,15 +62,27 @@ export function ConversationList({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b p-3">
-        <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar conversa..."
-            className="pl-8"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+      <div className="border-b p-3 space-y-2">
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar conversa..."
+              className="pl-8"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          {onNewConversation && (
+            <Button
+              size="icon"
+              variant="outline"
+              onClick={onNewConversation}
+              title="Nova conversa"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
 
@@ -93,7 +108,7 @@ export function ConversationList({
         ) : (
           <div className="space-y-0.5 p-1">
             {filtered.map((conv) => {
-              const name = conv.contact.name ?? conv.contact.phone;
+              const name = conv.contact.name ?? formatPhone(conv.contact.phone);
               const StatusIcon = statusIcon[conv.status] ?? Bot;
               const lastMsg = conv.messages[0]?.content;
 

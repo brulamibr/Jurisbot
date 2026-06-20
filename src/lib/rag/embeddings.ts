@@ -3,12 +3,12 @@ import OpenAI from "openai";
 const EMBEDDING_MODEL = "text-embedding-3-large";
 const BATCH_SIZE = 20;
 
-function getClient() {
-  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+function getClient(apiKey?: string) {
+  return new OpenAI({ apiKey: apiKey || process.env.OPENAI_API_KEY });
 }
 
-export async function generateEmbedding(text: string): Promise<number[]> {
-  const response = await getClient().embeddings.create({
+export async function generateEmbedding(text: string, apiKey?: string): Promise<number[]> {
+  const response = await getClient(apiKey).embeddings.create({
     model: EMBEDDING_MODEL,
     input: text,
     dimensions: 3072,
@@ -18,13 +18,14 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 }
 
 export async function generateEmbeddings(
-  texts: string[]
+  texts: string[],
+  apiKey?: string
 ): Promise<number[][]> {
   const results: number[][] = [];
 
   for (let i = 0; i < texts.length; i += BATCH_SIZE) {
     const batch = texts.slice(i, i + BATCH_SIZE);
-    const response = await getClient().embeddings.create({
+    const response = await getClient(apiKey).embeddings.create({
       model: EMBEDDING_MODEL,
       input: batch,
       dimensions: 3072,
