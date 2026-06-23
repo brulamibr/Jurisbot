@@ -143,10 +143,27 @@ model WhatsappInstance {
   createdAt   DateTime       @default(now()) @map("created_at")
   updatedAt   DateTime       @updatedAt @map("updated_at")
 
-  office        Office         @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  office        Office              @relation(fields: [officeId], references: [id], onDelete: Cascade)
   conversations Conversation[]
+  authKeys      WhatsappAuthKey[]
 
   @@map("whatsapp_instances")
+}
+
+model WhatsappAuthKey {
+  id         String   @id @default(cuid())
+  instanceId String   @map("instance_id")
+  keyType    String   @map("key_type")
+  keyId      String   @map("key_id")
+  value      Json
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  instance WhatsappInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+
+  @@unique([instanceId, keyType, keyId])
+  @@index([instanceId, keyType])
+  @@map("whatsapp_auth_keys")
 }
 
 enum WhatsappStatus {

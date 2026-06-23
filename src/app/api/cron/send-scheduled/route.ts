@@ -1,7 +1,14 @@
 export const dynamic = "force-dynamic";
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+
+function verifyCronSecret(request: NextRequest): boolean {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) return true;
+  const auth = request.headers.get("authorization");
+  return auth === `Bearer ${secret}`;
+}
 
 function calculateNextSendAt(current: Date, recurrence: string): Date {
   const next = new Date(current);
@@ -19,7 +26,11 @@ function calculateNextSendAt(current: Date, recurrence: string): Date {
   return next;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  if (!verifyCronSecret(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const now = new Date();
 
   const dueMessages = await prisma.scheduledMessage.findMany({

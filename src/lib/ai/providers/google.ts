@@ -18,7 +18,7 @@ export class GoogleProvider implements AIProvider {
   async chat(messages: AIMessage[], options?: AIOptions, apiKey?: string): Promise<AIResponse> {
     const key = apiKey || process.env.GOOGLE_AI_API_KEY!;
     const client = new GoogleGenerativeAI(key);
-    const modelName = options?.model ?? "gemini-1.5-pro";
+    const modelName = options?.model ?? "gemini-2.5-flash";
     const model = client.getGenerativeModel({
       model: modelName,
       generationConfig: {

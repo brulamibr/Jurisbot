@@ -1,5 +1,4 @@
 import makeWASocket, {
-  useMultiFileAuthState,
   DisconnectReason,
   fetchLatestBaileysVersion,
   makeCacheableSignalKeyStore,
@@ -8,9 +7,8 @@ import makeWASocket, {
 } from "@whiskeysockets/baileys";
 import { Boom } from "@hapi/boom";
 import * as QRCode from "qrcode";
-import path from "path";
-import fs from "fs";
 import { updateInstanceStatus } from "./session-store";
+import { usePrismaAuthState } from "./prisma-auth-state";
 import { prisma } from "@/lib/prisma";
 
 type MessageHandler = (
@@ -25,16 +23,6 @@ interface ActiveSession {
 }
 
 const sessions = new Map<string, ActiveSession>();
-
-const AUTH_DIR = path.join(process.cwd(), ".whatsapp-sessions");
-
-function getAuthDir(instanceId: string) {
-  const dir = path.join(AUTH_DIR, instanceId);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-  return dir;
-}
 
 let onMessageHandler: MessageHandler | null = null;
 
@@ -55,9 +43,7 @@ export async function connectInstance(
 
   await updateInstanceStatus(instanceId, "CONNECTING");
 
-  const authDir = getAuthDir(instanceId);
-  // eslint-disable-next-line react-hooks/rules-of-hooks -- Baileys function, not a React hook
-  const { state, saveCreds } = await useMultiFileAuthState(authDir);
+  const { state, saveCreds } = await usePrismaAuthState(instanceId);
   const { version } = await fetchLatestBaileysVersion();
 
   let qrDataUrl: string | null = null;
@@ -95,10 +81,13 @@ export async function connectInstance(
         await updateInstanceStatus(instanceId, "DISCONNECTED", {
           qrCode: null,
         });
-        // Clean auth state on logout
-        if (fs.existsSync(authDir)) {
-          fs.rmSync(authDir, { recursive: true, force: true });
-        }
+        await prisma.$transaction([
+          prisma.whatsappAuthKey.deleteMany({ where: { instanceId } }),
+          prisma.whatsappInstance.update({
+            where: { id: instanceId },
+            data: { sessionData: { unset: true } },
+          }),
+        ]);
       } else {
         // Reconnect on other disconnect reasons
         await updateInstanceStatus(instanceId, "DISCONNECTED");

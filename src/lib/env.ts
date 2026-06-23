@@ -7,6 +7,7 @@ const serverEnvSchema = z.object({
   GOOGLE_AI_API_KEY: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
   RESEND_API_KEY: z.string().optional(),
+  CRON_SECRET: z.string().optional(),
 });
 
 const clientEnvSchema = z.object({
