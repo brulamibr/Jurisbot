@@ -89,8 +89,13 @@ export default function KnowledgePage() {
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        alert(err.error ?? "Erro no upload");
+        const text = await res.text();
+        try {
+          const err = JSON.parse(text);
+          alert(err.error ?? "Erro no upload");
+        } catch {
+          alert(`Erro no servidor (${res.status}). Verifique os logs do VPS.`);
+        }
         return;
       }
 
