@@ -57,11 +57,7 @@ export async function POST(request: NextRequest) {
   }
 
   const fileExt = file.name.split(".").pop()?.toLowerCase() ?? "pdf";
-  const safeName = file.name
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^a-zA-Z0-9._-]/g, "_");
-  const fileName = `${dbUser.officeId}/${Date.now()}_${safeName}`;
+  const fileName = `${dbUser.officeId}/${Date.now()}.${fileExt}`;
 
   const buffer = Buffer.from(await file.arrayBuffer());
 
