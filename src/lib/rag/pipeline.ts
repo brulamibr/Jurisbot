@@ -33,27 +33,30 @@ export async function processDocument(documentId: string, openaiApiKey?: string)
       return;
     }
 
-    const embeddings = await generateEmbeddings(chunks.map((c) => c.content), openaiApiKey);
-
     await prisma.knowledgeChunk.deleteMany({
       where: { documentId },
     });
 
-    for (let i = 0; i < chunks.length; i++) {
-      const chunk = chunks[i];
-      const embedding = embeddings[i];
-      const vectorStr = `[${embedding.join(",")}]`;
+    const BATCH = 10;
+    for (let i = 0; i < chunks.length; i += BATCH) {
+      const batch = chunks.slice(i, i + BATCH);
+      const embeddings = await generateEmbeddings(batch.map((c) => c.content), openaiApiKey);
 
-      await prisma.$executeRawUnsafe(
-        `INSERT INTO knowledge_chunks (id, document_id, content, embedding, chunk_index, metadata, created_at)
-         VALUES ($1, $2, $3, $4::vector, $5, $6::jsonb, NOW())`,
-        `chunk_${documentId}_${i}`,
-        documentId,
-        chunk.content,
-        vectorStr,
-        chunk.index,
-        JSON.stringify(chunk.metadata)
-      );
+      for (let j = 0; j < batch.length; j++) {
+        const chunk = batch[j];
+        const vectorStr = `[${embeddings[j].join(",")}]`;
+
+        await prisma.$executeRawUnsafe(
+          `INSERT INTO knowledge_chunks (id, document_id, content, embedding, chunk_index, metadata, created_at)
+           VALUES ($1, $2, $3, $4::vector, $5, $6::jsonb, NOW())`,
+          `chunk_${documentId}_${i + j}`,
+          documentId,
+          chunk.content,
+          vectorStr,
+          chunk.index,
+          JSON.stringify(chunk.metadata)
+        );
+      }
     }
 
     await prisma.knowledgeDocument.update({

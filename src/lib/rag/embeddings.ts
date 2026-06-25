@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 
-const EMBEDDING_MODEL = "text-embedding-3-large";
-const BATCH_SIZE = 20;
+const EMBEDDING_MODEL = "text-embedding-3-small";
+const BATCH_SIZE = 10;
 
 function getClient(apiKey?: string) {
   return new OpenAI({ apiKey: apiKey || process.env.OPENAI_API_KEY });
@@ -11,7 +11,7 @@ export async function generateEmbedding(text: string, apiKey?: string): Promise<
   const response = await getClient(apiKey).embeddings.create({
     model: EMBEDDING_MODEL,
     input: text,
-    dimensions: 3072,
+    dimensions: 1536,
   });
 
   return response.data[0].embedding;
@@ -28,7 +28,7 @@ export async function generateEmbeddings(
     const response = await getClient(apiKey).embeddings.create({
       model: EMBEDDING_MODEL,
       input: batch,
-      dimensions: 3072,
+      dimensions: 1536,
     });
 
     results.push(...response.data.map((d) => d.embedding));
