@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
     "@google/generative-ai",
     "@anthropic-ai/sdk",
     "pdf-parse",
+    "mammoth",
   ],
 };
 

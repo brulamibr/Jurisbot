@@ -96,8 +96,9 @@ export default function KnowledgePage() {
 
       docsQuery.refetch();
       statsQuery.refetch();
-    } catch {
-      alert("Erro ao enviar arquivo");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Erro ao enviar arquivo";
+      alert(msg);
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -127,7 +128,7 @@ export default function KnowledgePage() {
           <input
             ref={fileRef}
             type="file"
-            accept=".pdf,.txt"
+            accept=".pdf,.txt,.md,.doc,.docx"
             className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0];

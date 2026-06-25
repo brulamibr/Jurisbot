@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { processDocument } from "@/lib/rag";
 
@@ -32,10 +32,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
 
-  const allowedTypes = ["application/pdf", "text/plain"];
-  if (!allowedTypes.includes(file.type)) {
+  const allowedTypes = [
+    "application/pdf",
+    "text/plain",
+    "text/markdown",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/msword",
+  ];
+  const allowedExtensions = ["pdf", "txt", "md", "doc", "docx"];
+  const ext = file.name.split(".").pop()?.toLowerCase();
+  if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(ext ?? "")) {
     return NextResponse.json(
-      { error: "File type not supported. Use PDF or TXT." },
+      { error: "Tipo de arquivo não suportado. Use PDF, DOCX ou MD." },
       { status: 400 }
     );
   }
@@ -53,7 +61,8 @@ export async function POST(request: NextRequest) {
 
   const buffer = Buffer.from(await file.arrayBuffer());
 
-  const { data: uploadData, error: uploadError } = await supabase.storage
+  const serviceClient = createServiceClient();
+  const { data: uploadData, error: uploadError } = await serviceClient.storage
     .from("knowledge")
     .upload(fileName, buffer, {
       contentType: file.type,
@@ -69,7 +78,7 @@ export async function POST(request: NextRequest) {
 
   const {
     data: { publicUrl },
-  } = supabase.storage.from("knowledge").getPublicUrl(uploadData.path);
+  } = serviceClient.storage.from("knowledge").getPublicUrl(uploadData.path);
 
   const doc = await prisma.knowledgeDocument.create({
     data: {
