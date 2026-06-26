@@ -20,14 +20,27 @@ interface ActiveSession {
   socket: WASocket;
   instanceId: string;
   officeId: string;
+  retryCount: number;
+  reconnectTimer?: ReturnType<typeof setTimeout>;
 }
 
 const sessions = new Map<string, ActiveSession>();
+const MAX_RETRIES = 3;
 
 let onMessageHandler: MessageHandler | null = null;
 
 export function setMessageHandler(handler: MessageHandler) {
   onMessageHandler = handler;
+}
+
+async function clearSessionData(instanceId: string) {
+  await prisma.$transaction([
+    prisma.whatsappAuthKey.deleteMany({ where: { instanceId } }),
+    prisma.whatsappInstance.update({
+      where: { id: instanceId },
+      data: { sessionData: { unset: true }, qrCode: null },
+    }),
+  ]);
 }
 
 export async function connectInstance(
@@ -39,6 +52,10 @@ export async function connectInstance(
     if (existing.socket.user) {
       return { qrDataUrl: null };
     }
+    // Clean up stale session before reconnecting
+    try { existing.socket.end(undefined); } catch {}
+    if (existing.reconnectTimer) clearTimeout(existing.reconnectTimer);
+    sessions.delete(instanceId);
   }
 
   await updateInstanceStatus(instanceId, "CONNECTING");
@@ -58,7 +75,7 @@ export async function connectInstance(
     generateHighQualityLinkPreview: false,
   });
 
-  const session: ActiveSession = { socket, instanceId, officeId };
+  const session: ActiveSession = { socket, instanceId, officeId, retryCount: 0 };
   sessions.set(instanceId, session);
 
   socket.ev.on("creds.update", saveCreds);
@@ -81,21 +98,28 @@ export async function connectInstance(
         await updateInstanceStatus(instanceId, "DISCONNECTED", {
           qrCode: null,
         });
-        await prisma.$transaction([
-          prisma.whatsappAuthKey.deleteMany({ where: { instanceId } }),
-          prisma.whatsappInstance.update({
-            where: { id: instanceId },
-            data: { sessionData: { unset: true } },
-          }),
-        ]);
+        await clearSessionData(instanceId);
       } else {
-        // Reconnect on other disconnect reasons
+        session.retryCount++;
         await updateInstanceStatus(instanceId, "DISCONNECTED");
-        setTimeout(() => connectInstance(instanceId, officeId), 5000);
+
+        if (session.retryCount >= MAX_RETRIES) {
+          console.log(
+            `[WhatsApp] Instance ${instanceId}: max retries (${MAX_RETRIES}) reached, clearing corrupted session`
+          );
+          await clearSessionData(instanceId);
+          return;
+        }
+
+        const delay = Math.min(5000 * session.retryCount, 30000);
+        session.reconnectTimer = setTimeout(() => {
+          connectInstance(instanceId, officeId);
+        }, delay);
       }
     }
 
     if (connection === "open") {
+      session.retryCount = 0;
       const phone = socket.user?.id.split(":")[0] ?? undefined;
       await updateInstanceStatus(instanceId, "CONNECTED", {
         phone,
@@ -116,7 +140,8 @@ export async function connectInstance(
 export async function disconnectInstance(instanceId: string) {
   const session = sessions.get(instanceId);
   if (session) {
-    session.socket.end(undefined);
+    if (session.reconnectTimer) clearTimeout(session.reconnectTimer);
+    try { session.socket.end(undefined); } catch {}
     sessions.delete(instanceId);
   }
   await updateInstanceStatus(instanceId, "DISCONNECTED", { qrCode: null });

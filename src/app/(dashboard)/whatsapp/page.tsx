@@ -129,7 +129,7 @@ export default function WhatsappPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="flex gap-2">
-                    {inst.status === "DISCONNECTED" && (
+                    {(
                       <Button
                         size="sm"
                         onClick={() => handleConnect(inst.id)}
@@ -168,7 +168,7 @@ export default function WhatsappPage() {
                         Desconectar
                       </Button>
                     )}
-                    {inst.status === "DISCONNECTED" && (
+                    {(
                       <Button
                         size="sm"
                         variant="outline"

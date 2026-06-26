@@ -128,7 +128,15 @@ export const whatsappRouter = router({
         throw new TRPCError({ code: "NOT_FOUND" });
       }
 
-      await disconnectInstance(instance.id);
+      try {
+        await disconnectInstance(instance.id);
+      } catch {
+        // Proceed with deletion even if disconnect fails
+      }
+
+      await ctx.prisma.whatsappAuthKey.deleteMany({
+        where: { instanceId: instance.id },
+      });
 
       return ctx.prisma.whatsappInstance.delete({
         where: { id: instance.id },
