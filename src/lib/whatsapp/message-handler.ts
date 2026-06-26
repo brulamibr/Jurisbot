@@ -29,6 +29,7 @@ export async function handleIncomingMessages(
 
     const isLid = remoteJid.endsWith("@lid");
     let phone = remoteJid.split("@")[0];
+    const replyJid = remoteJid;
 
     if (isLid) {
       const resolved = await resolvePhoneFromLid(instanceId, remoteJid);
@@ -122,7 +123,7 @@ export async function handleIncomingMessages(
       );
 
       if (aiResponse) {
-        await sendMessage(instanceId, phone, aiResponse.content);
+        await sendMessage(instanceId, replyJid, aiResponse.content);
 
         await prisma.message.create({
           data: {

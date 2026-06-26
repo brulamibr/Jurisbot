@@ -26,6 +26,7 @@ import {
   ChevronDown,
   FileAudio,
   Paperclip,
+  Trash2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -88,6 +89,9 @@ export function ChatView({
   });
   const closeConv = trpc.conversation.close.useMutation({
     onSuccess: onRefresh,
+  });
+  const deleteConv = trpc.conversation.delete.useMutation({
+    onSuccess: () => { onRefresh(); onBack(); },
   });
   const sendMsg = trpc.conversation.sendMessage.useMutation({
     onSuccess: () => {
@@ -196,6 +200,20 @@ export function ChatView({
               Fechar
             </Button>
           )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-destructive"
+            onClick={() => {
+              if (confirm("Excluir esta conversa e todas as mensagens?")) {
+                deleteConv.mutate({ conversationId: conversation.id });
+              }
+            }}
+            disabled={deleteConv.isPending}
+          >
+            <Trash2 className="mr-1 h-3.5 w-3.5" />
+            Excluir
+          </Button>
           <Button variant="ghost" size="icon" onClick={onToggleContactPanel}>
             <PanelRight className="h-4 w-4" />
           </Button>

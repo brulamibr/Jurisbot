@@ -148,6 +148,26 @@ export const conversationRouter = router({
       });
     }),
 
+  delete: protectedProcedure
+    .input(z.object({ conversationId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const conversation = await ctx.prisma.conversation.findFirst({
+        where: { id: input.conversationId, officeId: ctx.dbUser.officeId },
+      });
+
+      if (!conversation) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+
+      await ctx.prisma.message.deleteMany({
+        where: { conversationId: input.conversationId },
+      });
+
+      return ctx.prisma.conversation.delete({
+        where: { id: input.conversationId },
+      });
+    }),
+
   startNew: protectedProcedure
     .input(
       z.object({

@@ -15,6 +15,7 @@ import {
   MessageSquareText,
   Megaphone,
   Contact,
+  UsersRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +30,7 @@ const navItems = [
   { href: "/broadcast", label: "Envio em Massa", icon: Megaphone },
   { href: "/scheduled", label: "Agendamentos", icon: CalendarClock },
   { href: "/whatsapp", label: "WhatsApp", icon: Smartphone },
+  { href: "/groups", label: "Grupos", icon: UsersRound },
   { href: "/users", label: "Usuários", icon: UserCircle },
   { href: "/settings", label: "Configurações", icon: Settings },
 ];

@@ -205,3 +205,69 @@ export async function getQrCode(instanceId: string): Promise<string | null> {
   });
   return instance?.qrCode ?? null;
 }
+
+
+export async function createGroup(
+  instanceId: string,
+  subject: string,
+  participants: string[]
+) {
+  const session = sessions.get(instanceId);
+  if (!session) throw new Error("WhatsApp instance not connected");
+
+  const jids = participants.map((p) =>
+    p.includes("@") ? p : `${p}@s.whatsapp.net`
+  );
+
+  const result = await session.socket.groupCreate(subject, jids);
+  return result;
+}
+
+export async function getGroups(instanceId: string) {
+  const session = sessions.get(instanceId);
+  if (!session) throw new Error("WhatsApp instance not connected");
+
+  const groups = await session.socket.groupFetchAllParticipating();
+  return Object.values(groups);
+}
+
+export async function getGroupMetadata(instanceId: string, groupJid: string) {
+  const session = sessions.get(instanceId);
+  if (!session) throw new Error("WhatsApp instance not connected");
+
+  return session.socket.groupMetadata(groupJid);
+}
+
+export async function updateGroupParticipants(
+  instanceId: string,
+  groupJid: string,
+  participants: string[],
+  action: "add" | "remove" | "promote" | "demote"
+) {
+  const session = sessions.get(instanceId);
+  if (!session) throw new Error("WhatsApp instance not connected");
+
+  const jids = participants.map((p) =>
+    p.includes("@") ? p : `${p}@s.whatsapp.net`
+  );
+
+  return session.socket.groupParticipantsUpdate(groupJid, jids, action);
+}
+
+export async function updateGroupSubject(
+  instanceId: string,
+  groupJid: string,
+  subject: string
+) {
+  const session = sessions.get(instanceId);
+  if (!session) throw new Error("WhatsApp instance not connected");
+
+  return session.socket.groupUpdateSubject(groupJid, subject);
+}
+
+export async function getGroupInviteCode(instanceId: string, groupJid: string) {
+  const session = sessions.get(instanceId);
+  if (!session) throw new Error("WhatsApp instance not connected");
+
+  return session.socket.groupInviteCode(groupJid);
+}

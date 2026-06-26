@@ -15,6 +15,7 @@ import { labelRouter } from "./label";
 import { broadcastRouter } from "./broadcast";
 import { funnelRouter } from "./funnel";
 import { contactRouter } from "./contact";
+import { whatsappGroupRouter } from "./whatsapp-group";
 
 export const appRouter = router({
   user: userRouter,
@@ -33,6 +34,7 @@ export const appRouter = router({
   broadcast: broadcastRouter,
   funnel: funnelRouter,
   contact: contactRouter,
+  whatsappGroup: whatsappGroupRouter,
 });
 
 export type AppRouter = typeof appRouter;
