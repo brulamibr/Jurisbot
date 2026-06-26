@@ -28,7 +28,8 @@ export async function processDocument(documentId: string, openaiApiKey?: string)
     console.log(`[RAG] File fetched: ${buffer.length} bytes`);
 
     console.log(`[RAG] Extracting text...`);
-    const text = await extractText(buffer, doc.fileType);
+    const rawText = await extractText(buffer, doc.fileType);
+    const text = typeof rawText === "string" ? rawText : String(rawText ?? "");
     console.log(`[RAG] Text extracted: ${text.length} chars`);
 
     if (!text || text.trim().length === 0) {

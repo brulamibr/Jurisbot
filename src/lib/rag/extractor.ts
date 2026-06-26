@@ -25,10 +25,9 @@ export async function extractText(
 }
 
 async function extractPdfText(buffer: Buffer): Promise<string> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const parser: any = new PDFParse({ data: new Uint8Array(buffer) });
-  await parser.load();
-  return parser.getText() as string;
+  const parser = new PDFParse({ data: new Uint8Array(buffer) });
+  const result = await parser.getText();
+  return typeof result === "string" ? result : result.text ?? "";
 }
 
 async function extractDocxText(buffer: Buffer): Promise<string> {
