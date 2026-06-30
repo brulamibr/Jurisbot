@@ -12,5 +12,6 @@ export {
   updateGroupParticipants,
   updateGroupSubject,
   getGroupInviteCode,
+  reconnectAllInstances,
 } from "./manager";
 export { handleIncomingMessages } from "./message-handler";

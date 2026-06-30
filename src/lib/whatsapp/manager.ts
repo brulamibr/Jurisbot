@@ -271,3 +271,20 @@ export async function getGroupInviteCode(instanceId: string, groupJid: string) {
 
   return session.socket.groupInviteCode(groupJid);
 }
+
+
+export async function reconnectAllInstances() {
+  const instances = await prisma.whatsappInstance.findMany({
+    where: { status: { in: ["CONNECTED", "CONNECTING", "QR_READY"] } },
+    select: { id: true, officeId: true },
+  });
+
+  for (const instance of instances) {
+    try {
+      await connectInstance(instance.id, instance.officeId);
+      console.log(`[WhatsApp] Reconnected instance ${instance.id} on startup`);
+    } catch (err) {
+      console.error(`[WhatsApp] Failed to reconnect instance ${instance.id} on startup:`, err);
+    }
+  }
+}
